@@ -1,0 +1,22 @@
+# System files
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.env
+
+# Data
+pubmed_rct/
+*.zip
+*.txt
+
+# Models
+core-model/*.keras
+core-model/*.h5
+
+# Jupyter
+.ipynb_checkpoints/
