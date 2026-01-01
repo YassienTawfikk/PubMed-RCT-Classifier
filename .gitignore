@@ -13,6 +13,7 @@ venv/
 pubmed_rct/
 *.zip
 *.txt
+!requirements.txt
 
 # Models
 core-model/*.keras
