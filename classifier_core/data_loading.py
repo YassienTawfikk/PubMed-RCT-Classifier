@@ -2,14 +2,20 @@ import os
 
 def get_lines(filename):
     """
-    Reads filename (a text file) and returns the lines of text as a list.
+    Reads a text file and returns lines as a list.
     """
     with open(filename, "r") as f:
         return f.readlines()
 
 def preprocess_text_with_line_numbers(filename):
     """
-    Returns a list of dictionaries of abstract line data.
+    Parses a PubMed RCT text file into a list of dictionaries.
+    
+    Args:
+        filename (str): Path to the text file.
+        
+    Returns:
+        list[dict]: List of dictionaries containing line data (target, text, line_number, total_lines).
     """
     input_lines = get_lines(filename)
     abstract_lines = "" 

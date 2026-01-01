@@ -35,7 +35,7 @@ def create_datasets(train_samples, val_samples, test_samples, batch_size=32, max
     
     text_vectorizer = TextVectorization(max_tokens=max_tokens, output_sequence_length=output_seq_len)
     
-    # Adapt vectorizer (this might be slow)
+    # Adapt vectorizer
     print("Adapting TextVectorization layer...")
     text_vectorizer.adapt(train_df["text"].tolist())
 

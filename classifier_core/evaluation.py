@@ -1,10 +1,10 @@
-import os
-import itertools
+import pandas as pd
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import confusion_matrix, classification_report, precision_recall_curve, average_precision_score
+
 
 def save_plot(filename):
     """
@@ -21,7 +21,7 @@ def save_plot(filename):
 
 def plot_loss_curves(history, save_dir=None):
     """
-    Returns separate loss curves for training and validation metrics.
+    Plots and saves training curves for loss and accuracy.
     """
     loss = history.history['loss']
     val_loss = history.history['val_loss']
@@ -31,29 +31,28 @@ def plot_loss_curves(history, save_dir=None):
 
     epochs = range(len(history.history['loss']))
 
-    # Plot loss
-    plt.figure()
-    plt.plot(epochs, loss, label='training_loss')
-    plt.plot(epochs, val_loss, label='val_loss')
-    plt.title('Loss')
-    plt.xlabel('Epochs')
-    plt.legend()
+    # Plot loss and accuracy
+    fig, ax = plt.subplots(1, 2, figsize=(14, 5))
+    
+    # Loss
+    ax[0].plot(epochs, loss, label='training_loss')
+    ax[0].plot(epochs, val_loss, label='val_loss')
+    ax[0].set_title('Loss')
+    ax[0].set_xlabel('Epochs')
+    ax[0].legend()
+    
+    # Accuracy
+    ax[1].plot(epochs, accuracy, label='training_accuracy')
+    ax[1].plot(epochs, val_accuracy, label='val_accuracy')
+    ax[1].set_title('Accuracy')
+    ax[1].set_xlabel('Epochs')
+    ax[1].legend()
+    
     if save_dir:
-        save_plot(os.path.join(save_dir, "loss_curve.png"))
+        save_plot(os.path.join(save_dir, "training_curves.png"))
     else:
         plt.show()
 
-    # Plot accuracy
-    plt.figure()
-    plt.plot(epochs, accuracy, label='training_accuracy')
-    plt.plot(epochs, val_accuracy, label='val_accuracy')
-    plt.title('Accuracy')
-    plt.xlabel('Epochs')
-    plt.legend()
-    if save_dir:
-        save_plot(os.path.join(save_dir, "accuracy_curve.png"))
-    else:
-        plt.show()
 
 def make_confusion_matrix(y_true, y_pred, classes=None, figsize=(15, 15), text_size=10, save_dir=None):
     """
@@ -105,9 +104,73 @@ def make_confusion_matrix(y_true, y_pred, classes=None, figsize=(15, 15), text_s
     else:
         plt.show()
 
+def plot_class_distribution(y_true, class_names, save_dir=None):
+    """
+    Plots the distribution of true classes in the test set.
+    """
+    plt.figure(figsize=(10, 6))
+    sns.countplot(x=[class_names[i] for i in y_true], order=class_names)
+    plt.title("Class Distribution in Test Set")
+    plt.xlabel("Class")
+    plt.ylabel("Count")
+    plt.xticks(rotation=45)
+    
+    if save_dir:
+        save_plot(os.path.join(save_dir, "class_distribution.png"))
+    else:
+        plt.show()
+
+def plot_per_class_metrics(report_df, save_dir=None):
+    """
+    Plots per-class Precision, Recall, and F1-score from the classification report dataframe.
+    """
+    # Filter for classes only (exclude accuracy, macro avg, weighted avg)
+    metrics_df = report_df.iloc[:-3, :].copy() 
+    
+    metrics_df[["precision", "recall", "f1-score"]].plot(kind="bar", figsize=(12, 6))
+    plt.title("Per-Class Classification Metrics")
+    plt.xlabel("Class")
+    plt.ylabel("Score")
+    plt.legend(loc="lower right")
+    plt.xticks(rotation=45)
+    plt.ylim(0, 1.05)
+    
+    if save_dir:
+        save_plot(os.path.join(save_dir, "per_class_metrics.png"))
+    else:
+        plt.show()
+
+def plot_pr_curves(y_true, y_pred_probs, class_names, save_dir=None):
+    """
+    Plots Precision-Recall curves for each class.
+    """
+    n_classes = len(class_names)
+    
+    # One-hot encode y_true for per-class binary evaluation
+    y_true_one_hot = tf.keras.utils.to_categorical(y_true, num_classes=n_classes)
+    
+    plt.figure(figsize=(10, 8))
+    
+    for i in range(n_classes):
+        precision, recall, _ = precision_recall_curve(y_true_one_hot[:, i], y_pred_probs[:, i])
+        ap = average_precision_score(y_true_one_hot[:, i], y_pred_probs[:, i])
+        plt.plot(recall, precision, lw=2, label=f'{class_names[i]} (AP={ap:.2f})')
+        
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title("Precision-Recall Curves")
+    plt.legend(loc="best")
+    plt.grid(alpha=0.2)
+    
+    if save_dir:
+        save_plot(os.path.join(save_dir, "pr_curves.png"))
+    else:
+        plt.show()
+
 def evaluate_model(model, test_dataset, class_names, save_dir=None, plot_conf_mat=False):
     """
     Evaluates the model on test dataset and prints classification report.
+    Generates comprehensive plots and metrics csv if save_dir is provided.
     """
     print("Evaluating on test set...")
     test_loss, test_accuracy = model.evaluate(test_dataset)
@@ -124,9 +187,24 @@ def evaluate_model(model, test_dataset, class_names, save_dir=None, plot_conf_ma
         y_true.append(tf.argmax(label, axis=0)) # Convert one-hot to index
     y_true = np.array(y_true)
 
-    print(classification_report(y_true, model_preds, target_names=class_names))
+    # Classification Report
+    report_dict = classification_report(y_true, model_preds, target_names=class_names, output_dict=True)
+    report_df = pd.DataFrame(report_dict).transpose()
+    print(report_df)
     
-    if save_dir or plot_conf_mat:
-         make_confusion_matrix(y_true, model_preds, classes=class_names, save_dir=save_dir)
+    if save_dir:
+        # Save CSV
+        csv_path = os.path.join(save_dir, "classification_metrics_report.csv")
+        report_df.to_csv(csv_path)
+        print(f"Classification report saved to {csv_path}")
+        
+        # Plots
+        make_confusion_matrix(y_true, model_preds, classes=class_names, save_dir=save_dir)
+        plot_class_distribution(y_true, class_names, save_dir=save_dir)
+        plot_per_class_metrics(report_df, save_dir=save_dir)
+        plot_pr_curves(y_true, model_preds_probs, class_names, save_dir=save_dir)
+    elif plot_conf_mat:
+         make_confusion_matrix(y_true, model_preds, classes=class_names)
          
     return test_loss, test_accuracy
+
