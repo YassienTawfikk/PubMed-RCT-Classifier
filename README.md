@@ -2,6 +2,10 @@
 
 A state-of-the-art Transformer-based model achieving **84.9% Accuracy** on the PubMed 200k RCT dataset. This project implements a Deep Learning pipeline to automatically categorize sentences in medical abstracts into: `BACKGROUND`, `OBJECTIVE`, `METHODS`, `RESULTS`, or `CONCLUSIONS`.
 
+<p align='center'>
+   <img width="500" alt="PubMed Classifier Poster" src="https://github.com/user-attachments/assets/ce98ceca-b701-41ac-b726-7b4ac8776191" />
+</p>
+
 ---
 
 ## Model Performance
